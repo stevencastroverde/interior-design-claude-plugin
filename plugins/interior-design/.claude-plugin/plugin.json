@@ -1,7 +1,7 @@
 {
   "name": "interior-design",
   "version": "0.1.0",
-  "description": "Interior design workflow skills: FF&E room schedules and spec sheet annotation",
+  "description": "Interior design workflow skills: FF&E room schedules, spec sheet annotation, and image-to-DXF/DWG block generation",
   "author": {
     "name": "Steven Castroverde"
   },

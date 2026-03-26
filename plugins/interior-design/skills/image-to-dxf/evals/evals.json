@@ -1,0 +1,131 @@
+{
+  "skill_name": "image-to-dxf",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a photo of a Saarinen Tulip Chair I want to use in an AutoCAD floor plan. The chair is 26\" wide, 23.5\" deep, and 32\" tall. It's the white version, model number 150, from Knoll. List price is $2,695. Can you convert it to a DXF block I can insert into my drawings? I'll need the manufacturer and model embedded as attributes. Here's the image: [imagine a front-elevation photo of the iconic Saarinen Tulip arm chair — white fiberglass shell seat on a single tulip pedestal base, no visible back legs, one central column meeting a circular base]",
+      "expected_output": "A valid .dxf file containing: a block named approximately FURN-1-TULIP-CHAIR or similar, geometry representing the chair in front elevation (seat, back, pedestal column, circular base arc), all 7 FF&E ATTDEF attributes, INSERT with ATTRIB values populated including name=Tulip Arm Chair, manufacturer=Knoll, model=150, dimensions=26x23.5x32, price=$2,695",
+      "assertions": [
+        {
+          "name": "dxf_file_exists",
+          "description": "A .dxf output file was created",
+          "check": "file_exists"
+        },
+        {
+          "name": "dxf_is_valid",
+          "description": "ezdxf can open the file without errors",
+          "check": "python: import ezdxf; ezdxf.readfile(output_dxf)"
+        },
+        {
+          "name": "has_block_definition",
+          "description": "File contains at least one named block definition (not just model space)",
+          "check": "python: len([b for b in doc.blocks if not b.name.startswith('*')]) >= 1"
+        },
+        {
+          "name": "has_all_7_attribs",
+          "description": "Block INSERT has all 7 standard FF&E attributes populated",
+          "check": "python: all required attribute tags present in INSERT attribs"
+        },
+        {
+          "name": "geometry_has_outline",
+          "description": "Block contains at least one entity on the 0-OUTLINE layer",
+          "check": "python: any entity on 0-OUTLINE layer in block"
+        },
+        {
+          "name": "units_set_to_inches",
+          "description": "DXF header INSUNITS is set to 1 (inches)",
+          "check": "python: doc.header['$INSUNITS'] == 1"
+        },
+        {
+          "name": "dimensions_attribute_nonempty",
+          "description": "DIMENSIONS attribute contains a value (not empty string)",
+          "check": "python: DIMENSIONS attrib text is not empty"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "hey i have this pendant light fixture i want to add to my revit model. its the Solis Pendant from Pablo Designs, 24\" diameter, hangs about 18\" below ceiling, model SOLI-24. found it for around $1,150. finish is white oak. heres the image: [imagine a photo of the Solis pendant — a round disc-shaped shade made of wood slats, about 24\" wide and 8\" tall, hung from a fabric-covered cord from a small circular canopy, viewed slightly from below at an angle]",
+      "expected_output": "A valid .dxf file with a pendant fixture block, geometry showing the circular/disc shade, cord, and ceiling canopy in front elevation (flattened from perspective photo), ATTDEF attributes for all 7 fields, CATEGORY_CODE set to PF, MANUFACTURER as Pablo Designs, price around $1,150, dimensions reflecting 24\" width",
+      "assertions": [
+        {
+          "name": "dxf_file_exists",
+          "description": "A .dxf output file was created",
+          "check": "file_exists"
+        },
+        {
+          "name": "dxf_is_valid",
+          "description": "ezdxf can open the file without errors",
+          "check": "python: ezdxf.readfile(output_dxf)"
+        },
+        {
+          "name": "has_block_definition",
+          "description": "File contains at least one named block definition",
+          "check": "python: block definition exists"
+        },
+        {
+          "name": "has_all_7_attribs",
+          "description": "All 7 FF&E attribute tags are present in the block INSERT",
+          "check": "python: all 7 ATTRIB tags present"
+        },
+        {
+          "name": "category_is_pf",
+          "description": "CATEGORY_CODE attribute is set to PF (pendant fixture)",
+          "check": "python: CATEGORY_CODE == 'PF'"
+        },
+        {
+          "name": "contains_circular_geometry",
+          "description": "Block contains at least one CIRCLE or ARC entity (appropriate for round pendant shade)",
+          "check": "python: any CIRCLE or ARC entity in block"
+        },
+        {
+          "name": "perspective_handled",
+          "description": "Skill noted the view type (front elevation or similar) since image was angled",
+          "check": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm speccing out a bathroom and want CAD blocks for my plumbing fixtures. This is a Brizo Litze pull-down kitchen faucet, model 64025LF, in Luxe Gold finish. It's 8.6\" wide at the base and 15\" tall. MSRP $1,021. I want it as a DXF with all the product attributes so I can schedule it in AutoCAD. The image shows: [imagine a front-facing product photo of a bridge/pull-down kitchen faucet — tall arching spout, two handles on the sides, escutcheon plate at base, shown on a white background]",
+      "expected_output": "A valid .dxf file with a faucet block (category FA), geometry in front elevation showing the tall arched spout, two handles, and base escutcheon, ATTDEF attributes for all 7 fields with manufacturer=Brizo, model=64025LF, finish=Luxe Gold, dimensions reflecting 8.6x15 inches, price=$1,021",
+      "assertions": [
+        {
+          "name": "dxf_file_exists",
+          "description": "A .dxf output file was created",
+          "check": "file_exists"
+        },
+        {
+          "name": "dxf_is_valid",
+          "description": "ezdxf can open the file without errors",
+          "check": "python: ezdxf.readfile(output_dxf)"
+        },
+        {
+          "name": "has_block_definition",
+          "description": "File contains at least one named block definition",
+          "check": "python: block definition exists"
+        },
+        {
+          "name": "has_all_7_attribs",
+          "description": "All 7 FF&E attribute tags are present",
+          "check": "python: all 7 ATTRIB tags present"
+        },
+        {
+          "name": "category_is_fa",
+          "description": "CATEGORY_CODE is set to FA (faucet)",
+          "check": "python: CATEGORY_CODE == 'FA'"
+        },
+        {
+          "name": "geometry_has_detail_layer",
+          "description": "Block has entities on 0-DETAIL layer (handles, hardware details)",
+          "check": "python: any entity on 0-DETAIL layer in block"
+        },
+        {
+          "name": "has_arc_for_spout",
+          "description": "Block contains at least one ARC entity (appropriate for curved faucet spout)",
+          "check": "python: any ARC entity in block"
+        }
+      ]
+    }
+  ]
+}
