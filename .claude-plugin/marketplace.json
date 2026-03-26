@@ -9,7 +9,6 @@
       "name": "interior-design-skills",
       "source": "./plugins/interior-design",
       "description": "Skills for common interior design tasks",
-      "version": "0.1.0",
       "author": {
         "name": "Steven Castroverde"
       }
