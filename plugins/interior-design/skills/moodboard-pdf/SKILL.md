@@ -1,5 +1,6 @@
 ---
 name: moodboard-pdf
+version: "0.2.0"
 description: >
   Creates a professional interior design mood board PDF from a folder of product
   markdown clippings. Use this skill whenever a user wants a mood board, moodboard,
@@ -10,7 +11,7 @@ description: >
   of markdown product files and want to turn them into a visual PDF. Also trigger when
   the user asks to "update" or "regenerate" moodboards after adding new products.
   Do NOT use for Excel schedules, room schedules, or FF&E spreadsheets — use the
-  room-schedule skill for those.
+  schedule-creator skill for those.
 ---
 
 # Mood Board PDF Skill

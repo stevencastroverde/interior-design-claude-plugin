@@ -1,5 +1,6 @@
 ---
 name: autocad-hatch-pat
+version: "0.2.0"
 description: Generate AutoCAD-compatible .pat hatch pattern files from images or descriptions of tile/brick/stone patterns. Use this skill whenever the user mentions: PAT file, hatch pattern, AutoCAD hatch, tile pattern, brick pattern, stone pattern, repeating pattern for CAD, Revit pattern, custom hatch, or any request to create a .pat file. Also trigger when the user uploads a screenshot or photo of a tile/material pattern and wants to use it in CAD. The skill visualizes the pattern interactively BEFORE generating the file so the user can adjust dimensions and confirm before output.
 ---
 
@@ -38,7 +39,7 @@ Ask for any missing critical information. The minimum needed is:
 
 Before generating any file, build an **interactive HTML visualization** using the `show_widget` tool. This is mandatory — never skip to file generation.
 
-Read `/mnt/skills/user/autocad-hatch-pat/references/visualization.md` for full widget implementation details and the editable parameter panel spec.
+Read `references/visualization.md` (in this skill's directory) for full widget implementation details and the editable parameter panel spec.
 
 The visualization must:
 - Render the tile pattern to approximate scale in a canvas (600×400px minimum)
@@ -96,7 +97,7 @@ content += "\r\n"  # mandatory trailing blank line
 
 assert all(ord(c) < 128 for c in content), "Non-ASCII found!"
 
-with open('/mnt/user-data/outputs/PATTERN_NAME.pat', 'w', newline='') as f:
+with open('/path/to/output/PATTERN_NAME.pat', 'w', newline='') as f:
     f.write(content)
 ```
 

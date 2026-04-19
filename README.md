@@ -16,6 +16,15 @@ Install the plugin:
 /plugin install interior-design-skills@claude-meets-interior-design
 ```
 
+## Updating
+
+Pull the latest version and reinstall:
+
+```
+/plugin marketplace update claude-meets-interior-design
+/plugin install interior-design-skills@claude-meets-interior-design
+```
+
 ---
 
 ## Skills

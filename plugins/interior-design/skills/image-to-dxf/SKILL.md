@@ -40,7 +40,7 @@ The file opens in AutoCAD, Revit, Rhino, BricsCAD, and any other DXF-compatible 
 
 1. **A product image** — photograph, render, or spec sheet scan (PNG, JPG, WEBP)
 2. **Product data** — from one of two sources, auto-detected:
-   - **Markdown clipping** (`.md` file) — same format as the moodboard/room-schedule skills;
+   - **Markdown clipping** (`.md` file) — same format as the moodboard-pdf/schedule-creator skills;
      read with `parse_product_data.py`
    - **Manual input** — user provides details in conversation (name, dimensions, price, etc.)
 

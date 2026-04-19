@@ -1,5 +1,7 @@
 {
   "name": "claude-meets-interior-design",
+  "version": "0.2.0",
+  "repository": "https://github.com/stevencastroverde/interior-design-claude-plugin",
   "owner": {
     "name": "Steven Castroverde",
     "email": "steven@scv.design"
