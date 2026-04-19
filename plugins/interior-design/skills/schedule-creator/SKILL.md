@@ -1,5 +1,6 @@
 ---
 name: schedule-creator
+version: "0.2.0"
 description: >
   Creates a professional interior design schedule as an Excel (.xlsx) workbook —
   for a single room or an entire multi-room project at once.

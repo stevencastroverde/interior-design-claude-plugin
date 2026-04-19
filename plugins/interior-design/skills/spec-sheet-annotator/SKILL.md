@@ -1,5 +1,6 @@
 ---
 name: spec-sheet-annotator
+version: "0.2.0"
 description: >
   Annotates spec sheet PDFs with codes from any schedule — interior design, equipment,
   procurement, or any other domain. Stamps every page with its schedule code in red at

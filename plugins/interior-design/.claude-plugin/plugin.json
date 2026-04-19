@@ -1,7 +1,8 @@
 {
   "name": "interior-design-skills",
   "version": "0.2.0",
-  "description": "Interior design workflow skills: FF&E room schedules, spec sheet annotation, and image-to-DXF/DWG block generation",
+  "repository": "https://github.com/stevencastroverde/interior-design-claude-plugin",
+  "description": "Interior design workflow skills: FF&E room schedules, mood board PDFs, spec sheet annotation, image-to-DXF/DWG block generation, and AutoCAD hatch pattern generation",
   "author": {
     "name": "Steven Castroverde"
   }
