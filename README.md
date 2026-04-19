@@ -110,6 +110,66 @@ pip install pymupdf openpyxl
 
 ---
 
+## Mood Board PDF
+
+Creates a professional landscape PDF (11" × 8.5") from a folder of markdown product clippings — one PDF with a cover page, per-room mood board grid, and product spec pages.
+
+**Trigger phrases**
+
+Say things like:
+- "make the moodboard"
+- "generate the mood board for the kitchen"
+- "create the presentation board"
+- "build the FF&E visual"
+- "update the moodboards"
+
+**What you need to provide**
+
+- A folder containing room subfolders, each with markdown product clipping files
+- Project name and studio/semester info (optional)
+
+**What you get**
+
+A single landscape PDF with:
+- Cover page — project title, studio info, room index
+- Per room: one mood board page (product image grid) + product spec pages (3 per page)
+- Editorial style: warm cream background, forest green accents, clean typography
+
+**Prerequisites**
+
+```bash
+pip install pymupdf pillow requests
+```
+
+---
+
+## AutoCAD Hatch Pattern
+
+Generates AutoCAD-compatible `.pat` hatch pattern files from product photos or descriptions of tile, brick, or stone patterns. Visualizes the pattern interactively before generating the file.
+
+**Trigger phrases**
+
+Say things like:
+- "make a hatch pattern from this tile"
+- "create a PAT file for this brick pattern"
+- "AutoCAD hatch for this stone"
+- "generate a .pat from this image"
+
+**What you need to provide**
+
+- A product photo or screenshot of a tile/material pattern, OR
+- A text description with tile names and dimensions
+
+**What you get**
+
+A `.pat` file compatible with AutoCAD, Revit, BricsCAD, and other CAD tools, along with a visual preview you can review before the file is written.
+
+**Prerequisites**
+
+None — pure Claude reasoning and file write.
+
+---
+
 ## Version
 
-0.1.0 — Initial release
+0.2.0 — Added Mood Board PDF and AutoCAD Hatch Pattern skills; Schedule Creator upgraded to three-sheet output (Main Schedule, Materials & Finishes, Room Finish Schedule)
