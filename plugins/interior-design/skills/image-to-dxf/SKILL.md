@@ -1,5 +1,6 @@
 ---
 name: image-to-dxf
+version: "0.3.0"
 description: >
   Converts a product photograph or render into a DXF block file (.dxf) with embedded FF&E
   attributes for use in AutoCAD, Revit, Rhino, BricsCAD, and other CAD tools. The block contains

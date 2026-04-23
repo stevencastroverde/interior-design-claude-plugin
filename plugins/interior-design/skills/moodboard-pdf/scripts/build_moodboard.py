@@ -4,22 +4,26 @@ build_moodboard.py — Interior Design Mood Board & Material Specification PDF G
 
 Style v2 (2026):
   - Warm linen background (#EAE5DC)
-  - Mood boards: serif-italic 'materials' heading, single-row portrait images, no chrome
-  - Spec pages: full-width dark header bar, 2-up side-by-side card layout
+  - Mood boards: serif-italic heading, single-row ('row') or uniform-grid ('grid') images
+  - Optional color palette swatch row above images
+  - Spec pages: full-width dark header bar, 3-up card layout on 17×11 tabloid
   - Spec fields: MATERIAL, FINISH, SIZE/DIMS, PRICE, APPLICATION, SUSTAINABILITY, SPECS, SOURCE/SKU
 
 Usage:
   python3 build_moodboard.py \
     --project-dir "/path/to/project" \
-    --output "Material Specification - Project.pdf" \
-    --project-name "Restaurant" \
-    --studio "Steven" \
-    --semester "2026" \
+    --output "board.pdf" \
+    --project-name "Smith Residence" \
+    --studio "Steven Castroverde" \
+    [--layout grid] \
+    [--palette "#3D5A40,#EAE5DC,#1C1E18"] \
     [--logo "/path/to/logo.png"]
 """
 
 import argparse
+import datetime
 import json
+import math
 import os
 import re
 import sys
@@ -30,7 +34,7 @@ try:
     import requests
     from PIL import Image as PILImage
     from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.pagesizes import landscape, TABLOID
     from reportlab.lib import colors
     from reportlab.lib.units import inch
     from reportlab.lib.utils import ImageReader
@@ -42,7 +46,7 @@ except ImportError as e:
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE & LAYOUT CONSTANTS
 # ─────────────────────────────────────────────────────────────────────────────
-PAGE = landscape(letter)   # 792 × 612 pts  (11 × 8.5 inches)
+PAGE = landscape(TABLOID)  # 1224 × 792 pts  (17 × 11 inches)
 W, H = PAGE
 M    = 0.45 * inch         # page margin
 GAP  = 0.08 * inch         # gap between mood board image cells
@@ -50,8 +54,12 @@ GAP  = 0.08 * inch         # gap between mood board image cells
 SPEC_HEADER_H = 0.42 * inch   # dark header bar height
 SPEC_FOOTER_H = 0.22 * inch   # footer strip height
 IMG_FRAC      = 0.57          # fraction of spec card height used for image
+PALETTE_H     = 0.75 * inch   # height of palette swatch row
 
-PRODUCTS_PER_SPEC_PAGE = 2
+PRODUCTS_PER_SPEC_PAGE = 3
+
+# Auto-detected year — no --project flag needed
+YEAR = str(datetime.date.today().year)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DESIGN TOKENS — edit to restyle
@@ -201,6 +209,26 @@ def draw_text_wrapped(c, text, x, y, max_w, font, size, color, leading=None):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# PALETTE SWATCH ROW
+# ─────────────────────────────────────────────────────────────────────────────
+def draw_palette(c, palette_colors, avail_w, palette_y):
+    """Draw a horizontal row of filled color circles centered vertically in PALETTE_H."""
+    n = len(palette_colors)
+    if n == 0:
+        return
+    spacing = avail_w / n
+    r = 0.275 * inch
+    for i, hex_color in enumerate(palette_colors):
+        cx = M + spacing * i + spacing / 2
+        cy = palette_y + PALETTE_H / 2
+        hex_str = hex_color.strip()
+        if not hex_str.startswith('#'):
+            hex_str = f'#{hex_str}'
+        c.setFillColor(colors.HexColor(hex_str))
+        c.circle(cx, cy, r, fill=1, stroke=0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # SHARED PAGE CHROME
 # ─────────────────────────────────────────────────────────────────────────────
 def draw_bg(c):
@@ -208,14 +236,13 @@ def draw_bg(c):
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
 
-def draw_spec_header(c, room_name, project_name, studio, semester):
+def draw_spec_header(c, room_name, project_name):
     """Full-width dark header bar — project info left, studio/year right."""
     c.setFillColor(C_DARK)
     c.rect(0, H - SPEC_HEADER_H, W, SPEC_HEADER_H, fill=1, stroke=0)
 
     bar_cy = H - SPEC_HEADER_H / 2
 
-    # Left: "PROJECT — MATERIAL SPECIFICATION" + room name below
     proj  = (project_name or 'PROJECT').upper()
     title = f'{proj} \u2014 MATERIAL SPECIFICATION'
     c.setFont(F_SANS_B, 9)
@@ -226,17 +253,14 @@ def draw_spec_header(c, room_name, project_name, studio, semester):
     c.setFillColor(colors.HexColor('#AAAAAA'))
     c.drawString(M, bar_cy - 9, (room_name or '').upper())
 
-    # Right: "STUDIO · YEAR"
-    year        = str(semester or '2026')
-    studio_name = (studio or 'BUILDING COMPONENTS & SYSTEMS').upper()
-    right_label = f'{studio_name} \u00b7 {year}'
+    right_label = YEAR
     c.setFont(F_SANS, 6.5)
     c.setFillColor(colors.HexColor('#CCCCCC'))
     rw = c.stringWidth(right_label, F_SANS, 6.5)
     c.drawString(W - M - rw, bar_cy - 3, right_label)
 
 
-def draw_spec_footer(c, studio, semester):
+def draw_spec_footer(c, studio):
     """Simple footer: 'Author · Year' left, 'Product Specification' right."""
     fy = M * 0.50
 
@@ -244,9 +268,8 @@ def draw_spec_footer(c, studio, semester):
     c.setLineWidth(0.3)
     c.line(M, fy + 10, W - M, fy + 10)
 
-    year      = str(semester or '2026')
     author    = (studio or 'Steven').split('\u00b7')[0].strip()
-    left_text = f'{author} \u00b7 {year}'
+    left_text = f'{author} \u00b7 {YEAR}'
 
     c.setFont(F_SANS, 6)
     c.setFillColor(C_CAPTION)
@@ -260,7 +283,7 @@ def draw_spec_footer(c, studio, semester):
 # ─────────────────────────────────────────────────────────────────────────────
 # COVER PAGE
 # ─────────────────────────────────────────────────────────────────────────────
-def draw_cover(c, project_name, studio, semester, rooms, logo_reader=None,
+def draw_cover(c, project_name, studio, rooms, logo_reader=None,
                footer_right='MATERIAL SPECIFICATION'):
     draw_bg(c)
     PANEL_W = 3.1 * inch
@@ -298,7 +321,7 @@ def draw_cover(c, project_name, studio, semester, rooms, logo_reader=None,
 
     c.setFont(F_SANS_B, 7)
     c.setFillColor(colors.HexColor('#A08858'))
-    c.drawString(M, mid_y + 0.01 * inch, (semester or '').upper())
+    c.drawString(M, mid_y + 0.01 * inch, YEAR)
 
     c.setFont(F_SANS, 6)
     c.setFillColor(colors.HexColor('#88887A'))
@@ -332,13 +355,13 @@ def draw_cover(c, project_name, studio, semester, rooms, logo_reader=None,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# MOOD BOARD PAGE — portrait image row, serif italic heading
+# MOOD BOARD PAGE — row or grid layout with optional palette
 # ─────────────────────────────────────────────────────────────────────────────
-def draw_moodboard(c, room, logo_reader=None, studio='', footer_right=''):
+def draw_moodboard(c, room, logo_reader=None, studio='', layout='row', palette=None):
     """
-    Clean mood board: 'room type' (small sans) + 'materials' (large Times-Italic) top-left.
-    Single row of portrait images filling the remaining page height.
-    Uppercase captions centered below each image. No header/footer chrome.
+    Mood board page. layout='row': single horizontal row of portrait images.
+    layout='grid': uniform grid (2 or 3 cols) auto-sized to image count.
+    palette: list of hex strings drawn as circles above the image area.
     """
     draw_bg(c)
 
@@ -347,44 +370,77 @@ def draw_moodboard(c, room, logo_reader=None, studio='', footer_right=''):
 
     # Two-line room label top-left
     room_type = (room.get('subtitle', '') or room['name']).lower()
-    LABEL_TOP = H - M
+    LABEL_TOP  = H - M
+    LABEL_USED = 0.82 * inch
 
     c.setFont(F_SANS, 7.5)
     c.setFillColor(C_CAPTION)
     c.drawString(M, LABEL_TOP - 13, room_type)
 
+    heading_text = 'inspiration' if layout == 'grid' else 'materials'
     c.setFont(F_SERIF_I, 28)
     c.setFillColor(C_TEXT)
-    c.drawString(M, LABEL_TOP - 42, 'materials')
+    c.drawString(M, LABEL_TOP - 42, heading_text)
 
     if n == 0:
         c.showPage()
         return
 
-    # Single-row image layout
-    CAP_H      = 0.17 * inch   # caption strip below images
-    LABEL_USED = 0.82 * inch   # vertical space consumed by the heading
-
+    CAP_H   = 0.17 * inch
     avail_w = W - 2 * M
-    avail_h = H - M - LABEL_USED - M
 
-    img_h  = avail_h - CAP_H
-    cell_w = (avail_w - GAP * (n - 1)) / max(n, 1)
-    row_y  = M + CAP_H   # bottom edge of image cells
+    # Palette row — sits immediately below heading
+    pal_h = 0
+    if palette:
+        pal_h   = PALETTE_H
+        pal_y   = H - M - LABEL_USED - pal_h
+        draw_palette(c, palette, avail_w, pal_y)
 
-    for i, prod in enumerate(products):
-        cx = M + i * (cell_w + GAP)
+    avail_h = H - M - LABEL_USED - pal_h - M
 
-        pil_img = load_pil(prod.get('img'))
-        place_image_fit(c, pil_img, cx, row_y, cell_w, img_h)
+    if layout == 'grid':
+        cols = 2 if n <= 3 else 3
+        rows = math.ceil(n / cols)
+        cell_w = (avail_w - GAP * (cols - 1)) / cols
+        cell_h = (avail_h - CAP_H * rows - GAP * (rows - 1)) / rows
 
-        # Caption centered below image
-        cap = prod.get('title', '').upper()
-        if len(cap) > 30:
-            cap = cap[:28] + '\u2026'
-        c.setFont(F_SANS, 5.5)
-        c.setFillColor(C_CAPTION)
-        c.drawCentredString(cx + cell_w / 2, row_y - CAP_H * 0.55, cap)
+        for i, prod in enumerate(products):
+            row_i = i // cols
+            col_i = i % cols
+            # rb = distance from the bottom row (0 = bottom row)
+            rb    = rows - 1 - row_i
+            y_cap = M + rb * (cell_h + CAP_H + GAP)
+            y_img = y_cap + CAP_H
+            cx    = M + col_i * (cell_w + GAP)
+
+            pil_img = load_pil(prod.get('img'))
+            place_image_fit(c, pil_img, cx, y_img, cell_w, cell_h)
+
+            cap = prod.get('title', '').upper()
+            if len(cap) > 30:
+                cap = cap[:28] + '\u2026'
+            c.setFont(F_SANS, 5.5)
+            c.setFillColor(C_CAPTION)
+            c.drawCentredString(cx + cell_w / 2, y_cap + CAP_H * 0.38, cap)
+
+    else:
+        # Single-row layout
+        img_h  = avail_h - CAP_H
+        cell_w = (avail_w - GAP * (n - 1)) / max(n, 1)
+        row_y  = M + CAP_H
+
+        for i, prod in enumerate(products):
+            cx = M + i * (cell_w + GAP)
+
+            pil_img = load_pil(prod.get('img'))
+            place_image_fit(c, pil_img, cx, row_y, cell_w, img_h)
+
+            cap = prod.get('title', '').upper()
+            if len(cap) > 30:
+                cap = cap[:28] + '\u2026'
+            c.setFont(F_SANS, 5.5)
+            c.setFillColor(C_CAPTION)
+            c.drawCentredString(cx + cell_w / 2, row_y - CAP_H * 0.55, cap)
 
     c.showPage()
 
@@ -475,51 +531,55 @@ def draw_spec_card(c, prod, card_x, card_y, card_w, card_h):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SPEC PAGE — 2-column side-by-side
+# SPEC PAGE — 3-column layout
 # ─────────────────────────────────────────────────────────────────────────────
 def draw_spec_page(c, room, page_products, page_num, total_pages,
-                   logo_reader=None, studio='', semester='', project_name='',
+                   logo_reader=None, studio='', project_name='',
                    footer_right='MATERIAL SPECIFICATION'):
     draw_bg(c)
-    draw_spec_header(c, room.get('name', ''), project_name, studio, semester)
-    draw_spec_footer(c, studio, semester)
+    draw_spec_header(c, room.get('name', ''), project_name)
+    draw_spec_footer(c, studio)
 
     content_top = H - SPEC_HEADER_H
     content_bot = SPEC_FOOTER_H + 0.14 * inch
     content_h   = content_top - content_bot
 
-    n         = len(page_products)
-    DIVIDER_X = W / 2
-    CARD_GAP  = 0.12 * inch
+    CARD_GAP = 0.12 * inch
+    avail_w  = W - 2 * M
+    card_w   = (avail_w - 2 * CARD_GAP) / 3
 
-    if n == 1:
-        card_w = (W - 2 * M) * 0.62
-        card_x = M + ((W - 2 * M) - card_w) / 2
-        draw_spec_card(c, page_products[0], card_x, content_bot, card_w, content_h)
-    else:
-        card_w_left  = DIVIDER_X - M - CARD_GAP / 2
-        card_w_right = W - M - DIVIDER_X - CARD_GAP / 2
+    card_x = [
+        M,
+        M + card_w + CARD_GAP,
+        M + 2 * (card_w + CARD_GAP),
+    ]
+    div_x = [
+        M + card_w + CARD_GAP / 2,
+        M + 2 * card_w + 1.5 * CARD_GAP,
+    ]
 
-        draw_spec_card(c, page_products[0], M, content_bot, card_w_left, content_h)
-        draw_spec_card(c, page_products[1],
-                       DIVIDER_X + CARD_GAP / 2, content_bot, card_w_right, content_h)
+    for i, prod in enumerate(page_products):
+        draw_spec_card(c, prod, card_x[i], content_bot, card_w, content_h)
 
-        # Center divider line
-        c.setStrokeColor(C_RULE)
-        c.setLineWidth(0.3)
-        c.line(DIVIDER_X, content_bot + 4, DIVIDER_X, content_top - 4)
+    # Divider lines between occupied slots
+    c.setStrokeColor(C_RULE)
+    c.setLineWidth(0.3)
+    if len(page_products) >= 2:
+        c.line(div_x[0], content_bot + 4, div_x[0], content_top - 4)
+    if len(page_products) >= 3:
+        c.line(div_x[1], content_bot + 4, div_x[1], content_top - 4)
 
     c.showPage()
 
 
-def draw_room_specs(c, room, logo_reader=None, studio='', semester='',
+def draw_room_specs(c, room, logo_reader=None, studio='',
                     project_name='', footer_right='MATERIAL SPECIFICATION'):
     products = room['products']
     pages = [products[i:i + PRODUCTS_PER_SPEC_PAGE]
              for i in range(0, len(products), PRODUCTS_PER_SPEC_PAGE)]
     for pnum, batch in enumerate(pages, 1):
         draw_spec_page(c, room, batch, pnum, len(pages),
-                       logo_reader=logo_reader, studio=studio, semester=semester,
+                       logo_reader=logo_reader, studio=studio,
                        project_name=project_name, footer_right=footer_right)
 
 
@@ -709,25 +769,15 @@ def parse_room_folder(room_path, cache_dir):
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN BUILD FUNCTION
 # ─────────────────────────────────────────────────────────────────────────────
-def build_pdf(rooms, output_path, project_name='', studio='', semester='',
-              logo_path=None, footer_right='MATERIAL SPECIFICATION'):
+def build_pdf(rooms, output_path, project_name='', studio='',
+              logo_path=None, footer_right='MATERIAL SPECIFICATION',
+              layout='row', palette=None):
     """
     Build the moodboard + spec PDF.
 
-    rooms: list of dicts:
-      {
-        'name': 'RESTAURANT',
-        'subtitle': 'restaurant',   # small label shown on mood board page
-        'products': [
-          {
-            'title': '...', 'subtitle': '...', 'mfr': '...',
-            'material': '...', 'finish': '...', 'price': '...',
-            'dims': '...', 'desc': '...', 'application': '...',
-            'sustain': '...', 'specs': '...', 'sku': '...',
-            'img': '/path/to/img.jpg',
-          }, ...
-        ]
-      }
+    rooms: list of dicts with 'name', 'subtitle', and 'products' keys.
+    layout: 'row' (single-row portrait) or 'grid' (uniform grid).
+    palette: list of hex strings for color swatches, or None.
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -748,14 +798,14 @@ def build_pdf(rooms, output_path, project_name='', studio='', semester='',
     c.setAuthor(studio)
     c.setSubject('Interior Design Material Specification')
 
-    draw_cover(c, project_name, studio, semester, rooms,
+    draw_cover(c, project_name, studio, rooms,
                logo_reader=logo_reader, footer_right=footer_right)
 
     for room in rooms:
-        draw_moodboard(c, room, logo_reader=logo_reader, studio=studio)
+        draw_moodboard(c, room, logo_reader=logo_reader, studio=studio,
+                       layout=layout, palette=palette)
         draw_room_specs(c, room, logo_reader=logo_reader, studio=studio,
-                        semester=semester, project_name=project_name,
-                        footer_right=footer_right)
+                        project_name=project_name, footer_right=footer_right)
 
     c.save()
     size = output_path.stat().st_size
@@ -764,8 +814,8 @@ def build_pdf(rooms, output_path, project_name='', studio='', semester='',
 
 
 def auto_build_from_directory(project_dir, output_path, project_name='', studio='',
-                               semester='', logo_path=None,
-                               footer_right='MATERIAL SPECIFICATION'):
+                               logo_path=None, footer_right='MATERIAL SPECIFICATION',
+                               layout='row', palette=None):
     """
     Auto-discover rooms from subfolders and build the PDF.
     Any subfolder containing .md files is treated as a room.
@@ -795,7 +845,8 @@ def auto_build_from_directory(project_dir, output_path, project_name='', studio=
         project_name = project_dir.name
 
     return build_pdf(rooms, output_path, project_name=project_name, studio=studio,
-                     semester=semester, logo_path=logo_path, footer_right=footer_right)
+                     logo_path=logo_path, footer_right=footer_right,
+                     layout=layout, palette=palette)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -809,9 +860,16 @@ if __name__ == '__main__':
     parser.add_argument('--output',       required=True,  help='Output PDF path')
     parser.add_argument('--project-name', default='',     help='Project name shown in spec page header')
     parser.add_argument('--studio',       default='',     help='Studio/author name for header and footer')
-    parser.add_argument('--semester',     default='',     help='Year/semester label (e.g. 2026)')
     parser.add_argument('--logo',         default=None,   help='Path to logo PNG/JPG (optional)')
     parser.add_argument('--footer-right', default='MATERIAL SPECIFICATION')
+    parser.add_argument(
+        '--layout', default='row', choices=['row', 'grid'],
+        help='Mood board layout: row (single-row portrait, default) or grid (uniform grid)'
+    )
+    parser.add_argument(
+        '--palette', default=None,
+        help='Comma-separated hex color swatches above images (e.g. "#3D5A40,#EAE5DC,#1C1E18")'
+    )
     parser.add_argument(
         '--spec-fields', default=None,
         help=(
@@ -843,16 +901,20 @@ if __name__ == '__main__':
         caption=args.color_caption,
     )
 
+    palette = None
+    if args.palette:
+        palette = [c.strip() for c in args.palette.split(',') if c.strip()]
+
     if args.rooms_json:
         with open(args.rooms_json) as f:
             rooms = json.load(f)
         build_pdf(rooms, args.output, project_name=args.project_name,
-                  studio=args.studio, semester=args.semester,
-                  logo_path=args.logo, footer_right=args.footer_right)
+                  studio=args.studio, logo_path=args.logo,
+                  footer_right=args.footer_right, layout=args.layout, palette=palette)
     else:
         auto_build_from_directory(
             args.project_dir, args.output,
             project_name=args.project_name, studio=args.studio,
-            semester=args.semester, logo_path=args.logo,
-            footer_right=args.footer_right,
+            logo_path=args.logo, footer_right=args.footer_right,
+            layout=args.layout, palette=palette,
         )
