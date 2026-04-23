@@ -13,8 +13,14 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from reportlab.pdfgen import canvas
-from pypdf import PdfReader, PdfWriter
+try:
+    from reportlab.pdfgen import canvas
+    from pypdf import PdfReader, PdfWriter
+    from pypdf.constants import UserAccessPermissions
+except ImportError as e:
+    print(f"Missing dependency: {e}")
+    print("Install with: pip install reportlab pypdf")
+    sys.exit(1)
 
 
 def build_watermark_page(width: float, height: float, text: str):
@@ -54,8 +60,6 @@ def protect_pdf(
         writer.add_page(page)
 
     if restrict_editing or restrict_copying or restrict_printing:
-        from pypdf.constants import UserAccessPermissions
-
         # Start with all permissions enabled
         perms = (
             UserAccessPermissions.PRINT
@@ -86,6 +90,7 @@ def protect_pdf(
             permissions_flag=perms,
         )
 
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "wb") as f:
         writer.write(f)
 
@@ -105,7 +110,7 @@ def main():
     parser.add_argument(
         "--watermark-text",
         default=None,
-        help=f'Watermark string (default: "CONFIDENTIAL — Steven Castroverde — <date>")',
+        help='Watermark string (default: "CONFIDENTIAL — Steven Castroverde — <date>")',
     )
     parser.add_argument("--recipient-name", default=None, help="Recipient's display name")
     parser.add_argument("--recipient-email", default=None, help="Recipient's email address")
@@ -131,6 +136,10 @@ def main():
     else:
         output_path = str(input_path.parent / f"{input_path.stem}-protected.pdf")
 
+    # Warn if email provided without name
+    if args.recipient_email and not args.recipient_name:
+        print("Warning: --recipient-email ignored because --recipient-name was not provided.", file=sys.stderr)
+
     # Assemble watermark text
     if args.recipient_name:
         parts = [f"CONFIDENTIAL \u2014 Prepared for {args.recipient_name}"]
@@ -144,19 +153,23 @@ def main():
         )
 
     # Parse restriction flags
-    restrict_list = args.restrict or []
+    restrict_list = args.restrict
     restrict_editing = "editing" in restrict_list
     restrict_copying = "copying" in restrict_list
     restrict_printing = "printing" in restrict_list
 
-    result = protect_pdf(
-        input_path=str(input_path),
-        output_path=output_path,
-        watermark_text=watermark_text,
-        restrict_editing=restrict_editing,
-        restrict_copying=restrict_copying,
-        restrict_printing=restrict_printing,
-    )
+    try:
+        result = protect_pdf(
+            input_path=str(input_path),
+            output_path=output_path,
+            watermark_text=watermark_text,
+            restrict_editing=restrict_editing,
+            restrict_copying=restrict_copying,
+            restrict_printing=restrict_printing,
+        )
+    except Exception as e:
+        print(f"Error: failed to process PDF — {e}", file=sys.stderr)
+        sys.exit(1)
 
     print(result)
 
