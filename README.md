@@ -1,6 +1,6 @@
 # Claude Interior Design Plugin
 
-A Claude Code plugin for interior design workflows, focused on FF&E scheduling and spec sheet annotation.
+A Claude Code plugin for interior design workflows, focused on FF&E scheduling, spec sheet annotation, mood board generation, and client-ready PDF protection.
 
 ## Installation
 
@@ -179,6 +179,43 @@ None — pure Claude reasoning and file write.
 
 ---
 
+---
+
+## PDF Protect
+
+Adds a visible watermark and optional permission restrictions to any PDF before client delivery — no open password required. Recipients open the file normally; editing, copying, and printing are restricted at the PDF level.
+
+**Trigger phrases**
+
+Say things like:
+- "protect this PDF"
+- "add a watermark"
+- "lock down before sending to client"
+- "prepare this PDF for client delivery"
+- "watermark a PDF"
+
+**What you need to provide**
+
+- Path to any PDF file (or let the skill scan the current directory)
+- Optionally: recipient name and email (embedded in watermark for traceability)
+- Optionally: which restrictions to apply — editing, copying, printing (any combination)
+
+**What you get**
+
+A `<name>-protected.pdf` alongside the original with:
+- Diagonal watermark at 15% opacity — visible but fully readable underneath
+- Default text: `CONFIDENTIAL — Steven Castroverde — <date>`
+- Recipient text: `CONFIDENTIAL — Prepared for Jane Doe — jane@example.com`
+- PDF permission flags blocking whichever actions you chose (no user-facing password)
+
+**Prerequisites**
+
+```bash
+pip install reportlab pypdf
+```
+
+---
+
 ## Version
 
-0.2.0 — Added Mood Board PDF and AutoCAD Hatch Pattern skills; Schedule Creator upgraded to three-sheet output (Main Schedule, Materials & Finishes, Room Finish Schedule)
+0.3.0 — Added PDF Protect skill for client-ready watermarking and permission restrictions
