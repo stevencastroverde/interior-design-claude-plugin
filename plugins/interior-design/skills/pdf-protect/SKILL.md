@@ -27,7 +27,7 @@ description: >
 ### Running the script
 
 ```bash
-python plugins/interior-design/skills/pdf-protect/scripts/protect_pdf.py \
+python "$CLAUDE_PLUGIN_ROOT/skills/pdf-protect/scripts/protect_pdf.py" \
   --input <path> \
   [--output <path>] \
   [--watermark-text "CONFIDENTIAL — Steven Castroverde — <date>"] \

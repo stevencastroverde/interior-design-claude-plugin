@@ -37,7 +37,7 @@ Ask for any missing critical information. The minimum needed is:
 
 ### Step 2 — Visualize the Pattern
 
-Before generating any file, build an **interactive HTML visualization** using the `show_widget` tool. This is mandatory — never skip to file generation.
+Before generating any file, build an **interactive HTML visualization** using the `show_widget` tool. If `show_widget` is unavailable, present a text table of the pattern dimensions (tile sizes, grout width, offset, repeat unit) and ask the user to confirm before proceeding to Step 3.
 
 Read `references/visualization.md` (in this skill's directory) for full widget implementation details and the editable parameter panel spec.
 
