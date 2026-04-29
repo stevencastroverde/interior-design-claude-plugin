@@ -170,3 +170,150 @@ def image_to_data_uri(img_path) -> str:
         return f'data:image/jpeg;base64,{b64}'
     except Exception:
         return ''
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HTML RENDERER
+# ─────────────────────────────────────────────────────────────────────────────
+
+_BG        = '#EAE5DC'
+_DARK      = '#1C1E18'
+_CAPTION   = '#7A7065'
+_MARGIN_IN = 0.45
+
+
+def render_moodboard_html(room: dict, template_name: str,
+                          palette: list = None) -> str:
+    """
+    Return a complete HTML string for the moodboard page.
+
+    room: dict with 'name', 'subtitle', 'products'
+    template_name: key into TEMPLATES
+    palette: list of hex strings, or None
+    """
+    tmpl = TEMPLATES[template_name]
+    products = room.get('products', [])
+    subtitle = room.get('subtitle', '').lower()
+
+    assignments = assign_products_to_slots(products, template_name)
+
+    # Build grid cells HTML
+    cells_html = ''
+    slots = tmpl['slots']
+    for i, slot in enumerate(slots):
+        prod = assignments[i]
+        col_style = f'grid-column: {slot["col"]}; grid-row: {slot["row"]};'
+
+        if slot['dark']:
+            cells_html += (
+                f'<div style="{col_style} background:{_DARK};"></div>\n'
+            )
+            continue
+
+        if prod is None:
+            cells_html += (
+                f'<div style="{col_style} background:{_BG};"></div>\n'
+            )
+            continue
+
+        uri = image_to_data_uri(prod.get('img'))
+        title = (prod.get('title') or '').upper()[:30]
+
+        if uri:
+            img_tag = (
+                f'<img src="{uri}" style="width:100%;height:100%;'
+                f'object-fit:contain;background:{_BG};display:block;" '
+                f'alt="{title}">'
+            )
+        else:
+            img_tag = (
+                f'<div style="width:100%;height:100%;background:{_BG};'
+                f'display:flex;align-items:center;justify-content:center;">'
+                f'<span style="font-size:8pt;color:{_CAPTION};">{title}</span></div>'
+            )
+
+        cells_html += (
+            f'<div style="{col_style} overflow:hidden; position:relative;">\n'
+            f'  {img_tag}\n'
+            f'  <div style="position:absolute;bottom:0;left:0;right:0;'
+            f'text-align:center;padding:3pt 0;font-family:Helvetica,Arial,sans-serif;'
+            f'font-size:5.5pt;color:{_CAPTION};letter-spacing:.04em;">'
+            f'{title}</div>\n'
+            f'</div>\n'
+        )
+
+    # Palette strip
+    palette_html = ''
+    if palette:
+        swatches = ''.join(
+            f'<div style="flex:1;background:{h.strip()};"></div>'
+            for h in palette
+        )
+        palette_html = (
+            f'<div class="palette-strip" style="display:flex;height:40pt;'
+            f'margin-top:4pt;gap:0;">{swatches}</div>'
+        )
+
+    m = f'{_MARGIN_IN}in'
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page {{
+    size: 17in 11in landscape;
+    margin: 0;
+  }}
+  html, body {{
+    margin: 0; padding: 0;
+    width: 17in; height: 11in;
+    background: {_BG};
+    font-family: Helvetica, Arial, sans-serif;
+  }}
+  .page-inner {{
+    padding: {m};
+    box-sizing: border-box;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+  }}
+  .heading {{
+    margin-bottom: 10pt;
+  }}
+  .heading .room-type {{
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: {_CAPTION};
+  }}
+  .heading .room-word {{
+    font-family: 'Times New Roman', Times, serif;
+    font-style: italic;
+    font-size: 28pt;
+    color: #1A1A18;
+    line-height: 1.1;
+    margin: 0;
+  }}
+  .grid {{
+    display: grid;
+    grid-template-columns: {tmpl['css_columns']};
+    grid-template-rows: {tmpl['css_rows']};
+    gap: 4pt;
+    flex: 1;
+  }}
+</style>
+</head>
+<body>
+<div class="page-inner">
+  <div class="heading">
+    <div class="room-type">room</div>
+    <div class="room-word">{subtitle}</div>
+  </div>
+  <div class="grid">
+{cells_html}  </div>
+  {palette_html}
+</div>
+</body>
+</html>"""
+    return html

@@ -139,3 +139,54 @@ def test_returns_placeholder_for_missing_file():
 
 def test_returns_empty_string_for_none():
     assert image_to_data_uri(None) == ''
+
+
+from build_moodboard_html import render_moodboard_html
+
+
+def _sample_room():
+    return {
+        'name': 'LIVING ROOM',
+        'subtitle': 'living room',
+        'products': [
+            {'title': 'Porto Sectional', 'category': 'furniture', 'img': None},
+            {'title': 'Brass Pendant',   'category': 'lighting',  'img': None},
+            {'title': 'Ceramic Vase',    'category': 'accessory', 'img': None},
+            {'title': 'Wool Rug',        'category': 'textile',   'img': None},
+        ],
+    }
+
+
+def test_render_returns_html_string():
+    html = render_moodboard_html(_sample_room(), template_name='anchor-left')
+    assert isinstance(html, str)
+    assert '<html' in html
+
+
+def test_render_includes_room_heading():
+    html = render_moodboard_html(_sample_room(), template_name='anchor-left')
+    assert 'living room' in html.lower()
+
+
+def test_render_includes_css_grid():
+    html = render_moodboard_html(_sample_room(), template_name='anchor-left')
+    assert 'display: grid' in html or 'display:grid' in html
+
+
+def test_render_includes_palette_strip_when_palette_given():
+    html = render_moodboard_html(
+        _sample_room(), template_name='anchor-left',
+        palette=['#3D3530', '#EAE5DC', '#C07C60']
+    )
+    assert '#3D3530' in html
+    assert 'palette-strip' in html
+
+
+def test_render_no_palette_strip_when_not_given():
+    html = render_moodboard_html(_sample_room(), template_name='anchor-left')
+    assert 'palette-strip' not in html
+
+
+def test_render_dark_slot_uses_dark_bg():
+    html = render_moodboard_html(_sample_room(), template_name='anchor-left')
+    assert '#1C1E18' in html or '1c1e18' in html.lower()
