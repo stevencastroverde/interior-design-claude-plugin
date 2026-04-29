@@ -43,11 +43,24 @@ except ImportError as e:
     print("Install with: pip install reportlab Pillow requests --break-system-packages")
     sys.exit(1)
 
+import tempfile as _tempfile
+
 try:
     from pypdf import PdfWriter, PdfReader
     _pypdf_available = True
 except ImportError:
     _pypdf_available = False
+
+# HTML grid renderer — imported lazily only when grid layout is active,
+# so WeasyPrint is not required for row-layout-only installations.
+_render_room_to_pdf = None
+_scripts_dir = str(Path(__file__).parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+try:
+    from build_moodboard_html import render_room_to_pdf as _render_room_to_pdf
+except ImportError:
+    pass
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE & LAYOUT CONSTANTS
@@ -803,18 +816,19 @@ def build_pdf(rooms, output_path, project_name='', studio='',
         # \u2500\u2500 HTML/CSS Grid path \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
         if not _pypdf_available:
             raise RuntimeError(
-                'pypdf is required for grid layout. Run:\n'
-                '  pip install pypdf --break-system-packages'
+                'pypdf is required for --layout grid. Install it with:\n'
+                '  pip install pypdf --break-system-packages\n'
+                'Or use --layout row to generate a PDF without pypdf.'
             )
-        import sys as _sys
-        import tempfile as _tempfile
-        _scripts_dir = str(Path(__file__).parent)
-        if _scripts_dir not in _sys.path:
-            _sys.path.insert(0, _scripts_dir)
-        from build_moodboard_html import render_room_to_pdf
+        if _render_room_to_pdf is None:
+            raise RuntimeError(
+                'build_moodboard_html (WeasyPrint renderer) could not be imported.\n'
+                'Install WeasyPrint: pip install weasyprint --break-system-packages\n'
+                'On macOS you may also need: brew install pango'
+            )
 
-        with _tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
+        with _tempfile.TemporaryDirectory() as _tmp_str:
+            tmp = Path(_tmp_str)
 
             # Cover + spec pages via ReportLab
             rl_path = tmp / 'rl_pages.pdf'
@@ -832,8 +846,8 @@ def build_pdf(rooms, output_path, project_name='', studio='',
             # Moodboard pages via WeasyPrint \u2014 one PDF per room
             moodboard_paths = []
             for room in rooms:
-                mp = tmp / f'moodboard_{room["name"]}.pdf'
-                render_room_to_pdf(room, str(mp), template_name=template,
+                mp = tmp / f'moodboard_{slugify(room["name"])}.pdf'
+                _render_room_to_pdf(room, str(mp), template_name=template,
                                    palette=palette)
                 moodboard_paths.append((room, str(mp)))
 
