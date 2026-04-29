@@ -117,3 +117,25 @@ def test_returns_one_entry_per_slot():
     products = _make_products([('Sofa', 'furniture')] * 9)
     assignments = assign_products_to_slots(products, 'collage')
     assert len(assignments) == 9
+
+
+import tempfile, os
+from PIL import Image as PILImage
+from build_moodboard_html import image_to_data_uri
+
+
+def test_returns_data_uri_for_valid_image(tmp_path):
+    img = PILImage.new('RGB', (10, 10), color=(200, 180, 160))
+    p = tmp_path / 'test.jpg'
+    img.save(str(p), 'JPEG')
+    uri = image_to_data_uri(str(p))
+    assert uri.startswith('data:image/jpeg;base64,')
+
+
+def test_returns_placeholder_for_missing_file():
+    uri = image_to_data_uri('/nonexistent/path/img.jpg')
+    assert uri == ''
+
+
+def test_returns_empty_string_for_none():
+    assert image_to_data_uri(None) == ''

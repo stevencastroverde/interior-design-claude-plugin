@@ -146,3 +146,27 @@ def assign_products_to_slots(products: list, template_name: str) -> list:
         result[slot_idx] = prod  # None if we ran out of products
 
     return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IMAGE UTILITIES
+# ─────────────────────────────────────────────────────────────────────────────
+
+def image_to_data_uri(img_path) -> str:
+    """
+    Read an image file and return a base64 data URI string.
+    Returns '' if path is None or file does not exist.
+    Always re-encodes as JPEG at quality=90 for consistent output.
+    """
+    if not img_path or not os.path.exists(img_path):
+        return ''
+    try:
+        from PIL import Image as PILImage
+        from io import BytesIO
+        img = PILImage.open(img_path).convert('RGB')
+        buf = BytesIO()
+        img.save(buf, 'JPEG', quality=90)
+        b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        return f'data:image/jpeg;base64,{b64}'
+    except Exception:
+        return ''
