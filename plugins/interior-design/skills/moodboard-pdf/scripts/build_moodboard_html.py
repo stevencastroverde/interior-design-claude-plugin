@@ -261,7 +261,7 @@ def render_moodboard_html(room: dict, template_name: str,
 <meta charset="utf-8">
 <style>
   @page {{
-    size: 17in 11in landscape;
+    size: 17in 11in;
     margin: 0;
   }}
   html, body {{
