@@ -43,6 +43,25 @@ except ImportError as e:
     print("Install with: pip install reportlab Pillow requests --break-system-packages")
     sys.exit(1)
 
+import tempfile as _tempfile
+
+try:
+    from pypdf import PdfWriter, PdfReader
+    _pypdf_available = True
+except ImportError:
+    _pypdf_available = False
+
+# HTML grid renderer — imported lazily only when grid layout is active,
+# so WeasyPrint is not required for row-layout-only installations.
+_render_room_to_pdf = None
+_scripts_dir = str(Path(__file__).parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+try:
+    from build_moodboard_html import render_room_to_pdf as _render_room_to_pdf
+except ImportError:
+    pass
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE & LAYOUT CONSTANTS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -771,7 +790,7 @@ def parse_room_folder(room_path, cache_dir):
 # ─────────────────────────────────────────────────────────────────────────────
 def build_pdf(rooms, output_path, project_name='', studio='',
               logo_path=None, footer_right='MATERIAL SPECIFICATION',
-              layout='row', palette=None):
+              layout='row', palette=None, template=None):
     """
     Build the moodboard + spec PDF.
 
@@ -793,29 +812,94 @@ def build_pdf(rooms, output_path, project_name='', studio='',
         except Exception:
             logo_reader = None
 
-    c = canvas.Canvas(str(output_path), pagesize=PAGE)
-    c.setTitle(f'Material Specification \u2014 {project_name}')
-    c.setAuthor(studio)
-    c.setSubject('Interior Design Material Specification')
+    if layout == 'grid':
+        # \u2500\u2500 HTML/CSS Grid path \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        if not _pypdf_available:
+            raise RuntimeError(
+                'pypdf is required for --layout grid. Install it with:\n'
+                '  pip install pypdf --break-system-packages\n'
+                'Or use --layout row to generate a PDF without pypdf.'
+            )
+        if _render_room_to_pdf is None:
+            raise RuntimeError(
+                'build_moodboard_html (WeasyPrint renderer) could not be imported.\n'
+                'Install WeasyPrint: pip install weasyprint --break-system-packages\n'
+                'On macOS you may also need: brew install pango'
+            )
 
-    draw_cover(c, project_name, studio, rooms,
-               logo_reader=logo_reader, footer_right=footer_right)
+        with _tempfile.TemporaryDirectory() as _tmp_str:
+            tmp = Path(_tmp_str)
 
-    for room in rooms:
-        draw_moodboard(c, room, logo_reader=logo_reader, studio=studio,
-                       layout=layout, palette=palette)
-        draw_room_specs(c, room, logo_reader=logo_reader, studio=studio,
-                        project_name=project_name, footer_right=footer_right)
+            # Cover + spec pages via ReportLab
+            rl_path = tmp / 'rl_pages.pdf'
+            c = canvas.Canvas(str(rl_path), pagesize=PAGE)
+            c.setTitle(f'Material Specification \u2014 {project_name}')
+            c.setAuthor(studio)
+            c.setSubject('Interior Design Material Specification')
+            draw_cover(c, project_name, studio, rooms,
+                       logo_reader=logo_reader, footer_right=footer_right)
+            for room in rooms:
+                draw_room_specs(c, room, logo_reader=logo_reader, studio=studio,
+                                project_name=project_name, footer_right=footer_right)
+            c.save()
 
-    c.save()
+            # Moodboard pages via WeasyPrint \u2014 one PDF per room
+            moodboard_paths = []
+            for room in rooms:
+                mp = tmp / f'moodboard_{slugify(room["name"])}.pdf'
+                _render_room_to_pdf(room, str(mp), template_name=template,
+                                   palette=palette)
+                moodboard_paths.append((room, str(mp)))
+
+            # Merge: cover | (moodboard + spec pages per room) \u2192 final PDF
+            writer = PdfWriter()
+            rl_reader = PdfReader(str(rl_path))
+
+            # Page 0 = cover
+            writer.add_page(rl_reader.pages[0])
+
+            spec_page_idx = 1  # pages after cover in rl_pages.pdf
+            for room, mb_path in moodboard_paths:
+                # Moodboard page(s)
+                mb_reader = PdfReader(mb_path)
+                for pg in mb_reader.pages:
+                    writer.add_page(pg)
+                # Spec pages for this room (3 products per spec page)
+                n_spec_pages = math.ceil(len(room['products']) / PRODUCTS_PER_SPEC_PAGE)
+                for j in range(n_spec_pages):
+                    if spec_page_idx + j < len(rl_reader.pages):
+                        writer.add_page(rl_reader.pages[spec_page_idx + j])
+                spec_page_idx += n_spec_pages
+
+            with open(str(output_path), 'wb') as fout:
+                writer.write(fout)
+
+    else:
+        # \u2500\u2500 Original ReportLab path (row layout) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        c = canvas.Canvas(str(output_path), pagesize=PAGE)
+        c.setTitle(f'Material Specification \u2014 {project_name}')
+        c.setAuthor(studio)
+        c.setSubject('Interior Design Material Specification')
+
+        draw_cover(c, project_name, studio, rooms,
+                   logo_reader=logo_reader, footer_right=footer_right)
+
+        for room in rooms:
+            draw_moodboard(c, room, logo_reader=logo_reader, studio=studio,
+                           layout=layout, palette=palette)
+            draw_room_specs(c, room, logo_reader=logo_reader, studio=studio,
+                            project_name=project_name, footer_right=footer_right)
+
+        c.save()
+
     size = output_path.stat().st_size
-    print(f'\u2705 PDF saved: {output_path}  ({size // 1024} KB,  {1 + len(rooms) * 2}+ pages)')
+    print(f'\u2705 PDF saved: {output_path}  ({size // 1024} KB)')
     return str(output_path)
 
 
 def auto_build_from_directory(project_dir, output_path, project_name='', studio='',
                                logo_path=None, footer_right='MATERIAL SPECIFICATION',
-                               layout='row', palette=None):
+                               layout='row', palette=None, template=None):
     """
     Auto-discover rooms from subfolders and build the PDF.
     Any subfolder containing .md files is treated as a room.
@@ -846,7 +930,7 @@ def auto_build_from_directory(project_dir, output_path, project_name='', studio=
 
     return build_pdf(rooms, output_path, project_name=project_name, studio=studio,
                      logo_path=logo_path, footer_right=footer_right,
-                     layout=layout, palette=palette)
+                     layout=layout, palette=palette, template=template)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -865,6 +949,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '--layout', default='row', choices=['row', 'grid'],
         help='Mood board layout: row (single-row portrait, default) or grid (uniform grid)'
+    )
+    parser.add_argument(
+        '--template', default=None,
+        choices=['anchor-left', 'feature-top', 'collage'],
+        help='Pin a specific grid template (default: auto-selected by product count)'
     )
     parser.add_argument(
         '--palette', default=None,
@@ -910,11 +999,12 @@ if __name__ == '__main__':
             rooms = json.load(f)
         build_pdf(rooms, args.output, project_name=args.project_name,
                   studio=args.studio, logo_path=args.logo,
-                  footer_right=args.footer_right, layout=args.layout, palette=palette)
+                  footer_right=args.footer_right, layout=args.layout, palette=palette,
+                  template=args.template)
     else:
         auto_build_from_directory(
             args.project_dir, args.output,
             project_name=args.project_name, studio=args.studio,
             logo_path=args.logo, footer_right=args.footer_right,
-            layout=args.layout, palette=palette,
+            layout=args.layout, palette=palette, template=args.template,
         )
