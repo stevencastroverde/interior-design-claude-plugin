@@ -229,7 +229,7 @@ def render_moodboard_html(room: dict, template_name: str,
     """
     tmpl = TEMPLATES[template_name]
     products = room.get('products', [])
-    subtitle = room.get('subtitle', '').lower()
+    subtitle = (room.get('subtitle') or room.get('name', '')).lower()
 
     assignments = assign_products_to_slots(products, template_name)
 
@@ -244,7 +244,7 @@ def render_moodboard_html(room: dict, template_name: str,
     palette_html = ''
     if palette:
         swatches = ''.join(
-            f'<div style="flex:1;background:{h.strip()};"></div>'
+            f'<div style="flex:1;background:{h.strip().replace(chr(34), "").replace(chr(39), "")};"></div>'
             for h in palette
         )
         palette_html = (
