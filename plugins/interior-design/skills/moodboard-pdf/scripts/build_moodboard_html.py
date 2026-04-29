@@ -317,3 +317,41 @@ def render_moodboard_html(room: dict, template_name: str,
 </body>
 </html>"""
     return html
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WEASYPRINT PDF CONVERSION
+# ─────────────────────────────────────────────────────────────────────────────
+
+try:
+    import weasyprint as _wp
+    _weasyprint_available = True
+except ImportError:
+    _weasyprint_available = False
+
+
+def render_room_to_pdf(room: dict, output_path: str,
+                       template_name: str = None,
+                       palette: list = None) -> str:
+    """
+    Render one room's moodboard page to a PDF file via WeasyPrint.
+
+    template_name: override template; if None, auto-selected by product count.
+    palette: list of hex strings, or None.
+    Returns output_path on success.
+    Raises RuntimeError if WeasyPrint is not installed.
+    """
+    if not _weasyprint_available:
+        raise RuntimeError(
+            'WeasyPrint is not installed. Run:\n'
+            '  pip install weasyprint --break-system-packages\n'
+            'On macOS you may also need: brew install pango'
+        )
+
+    products = room.get('products', [])
+    tmpl_name = select_template(len(products), override=template_name)
+    html = render_moodboard_html(room, tmpl_name, palette=palette)
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    _wp.HTML(string=html).write_pdf(output_path)
+    return output_path

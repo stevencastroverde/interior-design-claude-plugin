@@ -190,3 +190,37 @@ def test_render_no_palette_strip_when_not_given():
 def test_render_dark_slot_uses_dark_bg():
     html = render_moodboard_html(_sample_room(), template_name='anchor-left')
     assert '#1C1E18' in html or '1c1e18' in html.lower()
+
+
+from build_moodboard_html import render_room_to_pdf
+
+
+def test_render_room_to_pdf_creates_file(tmp_path):
+    room = {
+        'name': 'LIVING ROOM',
+        'subtitle': 'living room',
+        'products': [
+            {'title': 'Porto Sectional', 'category': 'furniture', 'img': None},
+            {'title': 'Ceramic Vase',    'category': 'accessory', 'img': None},
+        ],
+    }
+    out = tmp_path / 'moodboard.pdf'
+    result = render_room_to_pdf(room, str(out), template_name='anchor-left')
+    assert result == str(out)
+    assert out.exists()
+    assert out.stat().st_size > 1000  # non-empty PDF
+
+
+def test_render_room_to_pdf_raises_clear_error_if_weasyprint_missing(
+    tmp_path, monkeypatch
+):
+    import build_moodboard_html as bmh
+    monkeypatch.setattr(bmh, '_weasyprint_available', False)
+
+    room = {'name': 'X', 'subtitle': 'x', 'products': []}
+    out = tmp_path / 'out.pdf'
+    try:
+        bmh.render_room_to_pdf(room, str(out))
+        assert False, "should have raised"
+    except RuntimeError as e:
+        assert 'weasyprint' in str(e).lower()
