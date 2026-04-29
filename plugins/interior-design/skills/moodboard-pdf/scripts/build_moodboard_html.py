@@ -5,10 +5,10 @@ Produces a single-page PDF per room using WeasyPrint. Called by build_moodboard.
 when --layout grid is used. Row layout and spec pages remain in ReportLab.
 """
 
-import base64
-import os
-import tempfile
-from pathlib import Path
+import base64        # used by Task 5 (image_to_data_uri)
+import os            # used by Task 5 (image_to_data_uri)
+import tempfile      # used by Task 7 (render_room_to_pdf)
+from pathlib import Path  # used by Task 7 (render_room_to_pdf)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CATEGORY DETECTION
