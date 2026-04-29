@@ -7,6 +7,7 @@ when --layout grid is used. Row layout and spec pages remain in ReportLab.
 
 import base64
 import os
+import re
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -244,7 +245,7 @@ def render_moodboard_html(room: dict, template_name: str,
     palette_html = ''
     if palette:
         swatches = ''.join(
-            f'<div style="flex:1;background:{h.strip().replace(chr(34), "").replace(chr(39), "")};"></div>'
+            f'<div style="flex:1;background:{re.sub(r"[^#0-9A-Fa-f]", "", h.strip())};"></div>'
             for h in palette
         )
         palette_html = (
