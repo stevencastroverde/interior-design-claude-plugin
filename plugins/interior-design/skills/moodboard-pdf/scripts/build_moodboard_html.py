@@ -7,7 +7,6 @@ when --layout grid is used. Row layout and spec pages remain in ReportLab.
 
 import base64        # used by Task 5 (image_to_data_uri)
 import os            # used by Task 5 (image_to_data_uri)
-import tempfile      # used by Task 7 (render_room_to_pdf)
 from pathlib import Path  # used by Task 7 (render_room_to_pdf)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -182,6 +181,43 @@ _CAPTION   = '#7A7065'
 _MARGIN_IN = 0.45
 
 
+def _render_cell(slot: dict, prod) -> str:
+    """Return the HTML string for a single grid cell."""
+    col_style = f'grid-column: {slot["col"]}; grid-row: {slot["row"]};'
+
+    if slot['dark']:
+        return f'<div style="{col_style} background:{_DARK};"></div>\n'
+
+    if prod is None:
+        return f'<div style="{col_style} background:{_BG};"></div>\n'
+
+    uri = image_to_data_uri(prod.get('img'))
+    title = (prod.get('title') or '').upper()[:30]
+
+    if uri:
+        img_tag = (
+            f'<img src="{uri}" style="width:100%;height:100%;'
+            f'object-fit:contain;background:{_BG};display:block;" '
+            f'alt="{title}">'
+        )
+    else:
+        img_tag = (
+            f'<div style="width:100%;height:100%;background:{_BG};'
+            f'display:flex;align-items:center;justify-content:center;">'
+            f'<span style="font-size:8pt;color:{_CAPTION};">{title}</span></div>'
+        )
+
+    return (
+        f'<div style="{col_style} overflow:hidden; position:relative;">\n'
+        f'  {img_tag}\n'
+        f'  <div style="position:absolute;bottom:0;left:0;right:0;'
+        f'text-align:center;padding:3pt 0;font-family:Helvetica,Arial,sans-serif;'
+        f'font-size:5.5pt;color:{_CAPTION};letter-spacing:.04em;">'
+        f'{title}</div>\n'
+        f'</div>\n'
+    )
+
+
 def render_moodboard_html(room: dict, template_name: str,
                           palette: list = None) -> str:
     """
@@ -198,49 +234,11 @@ def render_moodboard_html(room: dict, template_name: str,
     assignments = assign_products_to_slots(products, template_name)
 
     # Build grid cells HTML
-    cells_html = ''
     slots = tmpl['slots']
-    for i, slot in enumerate(slots):
-        prod = assignments[i]
-        col_style = f'grid-column: {slot["col"]}; grid-row: {slot["row"]};'
-
-        if slot['dark']:
-            cells_html += (
-                f'<div style="{col_style} background:{_DARK};"></div>\n'
-            )
-            continue
-
-        if prod is None:
-            cells_html += (
-                f'<div style="{col_style} background:{_BG};"></div>\n'
-            )
-            continue
-
-        uri = image_to_data_uri(prod.get('img'))
-        title = (prod.get('title') or '').upper()[:30]
-
-        if uri:
-            img_tag = (
-                f'<img src="{uri}" style="width:100%;height:100%;'
-                f'object-fit:contain;background:{_BG};display:block;" '
-                f'alt="{title}">'
-            )
-        else:
-            img_tag = (
-                f'<div style="width:100%;height:100%;background:{_BG};'
-                f'display:flex;align-items:center;justify-content:center;">'
-                f'<span style="font-size:8pt;color:{_CAPTION};">{title}</span></div>'
-            )
-
-        cells_html += (
-            f'<div style="{col_style} overflow:hidden; position:relative;">\n'
-            f'  {img_tag}\n'
-            f'  <div style="position:absolute;bottom:0;left:0;right:0;'
-            f'text-align:center;padding:3pt 0;font-family:Helvetica,Arial,sans-serif;'
-            f'font-size:5.5pt;color:{_CAPTION};letter-spacing:.04em;">'
-            f'{title}</div>\n'
-            f'</div>\n'
-        )
+    cells_html = ''.join(
+        _render_cell(slots[i], assignments[i])
+        for i in range(len(slots))
+    )
 
     # Palette strip
     palette_html = ''

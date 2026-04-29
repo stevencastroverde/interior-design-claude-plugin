@@ -208,7 +208,10 @@ def test_render_room_to_pdf_creates_file(tmp_path):
     result = render_room_to_pdf(room, str(out), template_name='anchor-left')
     assert result == str(out)
     assert out.exists()
-    assert out.stat().st_size > 1000  # non-empty PDF
+    content = out.read_bytes()
+    assert content[:4] == b'%PDF'   # valid PDF magic bytes
+    assert b'%%EOF' in content      # PDF properly terminated
+    assert len(content) > 1000
 
 
 def test_render_room_to_pdf_raises_clear_error_if_weasyprint_missing(
