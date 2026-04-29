@@ -75,3 +75,45 @@ def test_collage_has_9_slots():
 
 def test_feature_top_has_5_slots():
     assert len(TEMPLATES['feature-top']['slots']) == 5
+
+
+from build_moodboard_html import assign_products_to_slots
+
+
+def _make_products(specs):
+    """specs: list of (title, category_or_None)"""
+    return [{'title': t, 'category': c} for t, c in specs]
+
+
+def test_furniture_lands_in_size_rank_1_slot():
+    products = _make_products([
+        ('Porto Sofa', 'furniture'),
+        ('Ceramic Vase', 'accessory'),
+        ('Woven Pendant', 'lighting'),
+        ('Marble Table', 'furniture'),
+    ])
+    assignments = assign_products_to_slots(products, 'anchor-left')
+    # slot index 0 is size_rank=1 (hero) — should hold a furniture product
+    hero_title = assignments[0]['title']
+    assert hero_title in ('Porto Sofa', 'Marble Table')
+
+
+def test_dark_slots_receive_no_product():
+    products = _make_products([('Sofa', 'furniture')] * 5)
+    assignments = assign_products_to_slots(products, 'anchor-left')
+    # slot index 1 is dark=True in anchor-left — should be None
+    assert assignments[1] is None
+
+
+def test_fewer_products_than_slots_pads_with_none():
+    products = _make_products([('Sofa', 'furniture'), ('Vase', 'accessory')])
+    assignments = assign_products_to_slots(products, 'anchor-left')
+    assert len(assignments) == 6  # anchor-left has 6 slots
+    none_count = sum(1 for a in assignments if a is None)
+    assert none_count >= 4  # at least 4 empty (1 dark + 3 unfilled)
+
+
+def test_returns_one_entry_per_slot():
+    products = _make_products([('Sofa', 'furniture')] * 9)
+    assignments = assign_products_to_slots(products, 'collage')
+    assert len(assignments) == 9

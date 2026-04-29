@@ -103,3 +103,46 @@ def select_template(product_count: int, override: str = None) -> str:
     if override and override in TEMPLATES:
         return override
     return 'anchor-left' if product_count <= 6 else 'collage'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRODUCT → SLOT ASSIGNMENT
+# ─────────────────────────────────────────────────────────────────────────────
+
+_CATEGORY_RANK = {'furniture': 1, 'lighting': 2, 'textile': 2, 'accessory': 3}
+
+
+def assign_products_to_slots(products: list, template_name: str) -> list:
+    """
+    Assign products to template slots. Returns a list parallel to template slots,
+    where each entry is either a product dict or None.
+
+    Rules:
+    - Dark slots (accent cells) always receive None — they render as solid #1C1E18.
+    - Non-dark slots are ranked by size_rank (1=largest first).
+    - Products are sorted by category priority (furniture first, accessories last).
+    - Products fill slots in size_rank order; extras are dropped, empties are None.
+    """
+    tmpl = TEMPLATES[template_name]
+    slots = tmpl['slots']
+
+    # Sort products: furniture (rank 1) → lighting/textile (rank 2) → accessory (rank 3)
+    sorted_products = sorted(
+        products,
+        key=lambda p: _CATEGORY_RANK.get(detect_category(p), 3)
+    )
+
+    # Sort non-dark slot indices by size_rank ascending (largest cells first)
+    fillable = sorted(
+        [i for i, s in enumerate(slots) if not s['dark']],
+        key=lambda i: slots[i]['size_rank']
+    )
+
+    product_iter = iter(sorted_products)
+    result = [None] * len(slots)
+
+    for slot_idx in fillable:
+        prod = next(product_iter, None)
+        result[slot_idx] = prod  # None if we ran out of products
+
+    return result
