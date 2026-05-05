@@ -269,6 +269,9 @@ def render_moodboard_html(room: dict, template_name: str,
     width: 17in; height: 11in;
     background: {_BG};
     font-family: Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }}
   .page-inner {{
     padding: {m};
@@ -319,32 +322,33 @@ def render_moodboard_html(room: dict, template_name: str,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# WEASYPRINT PDF CONVERSION
+# PLAYWRIGHT PDF CONVERSION
 # ─────────────────────────────────────────────────────────────────────────────
 
 try:
-    import weasyprint as _wp
-    _weasyprint_available = True
+    from playwright.sync_api import sync_playwright
+    _playwright_available = True
 except ImportError:
-    _weasyprint_available = False
+    _playwright_available = False
 
 
 def render_room_to_pdf(room: dict, output_path: str,
                        template_name: str = None,
                        palette: list = None) -> str:
     """
-    Render one room's moodboard page to a PDF file via WeasyPrint.
+    Render one room's moodboard page to a PDF file via Playwright (Chromium).
 
     template_name: override template; if None, auto-selected by product count.
     palette: list of hex strings, or None.
     Returns output_path on success.
-    Raises RuntimeError if WeasyPrint is not installed.
+    Raises RuntimeError if Playwright is not installed.
     """
-    if not _weasyprint_available:
+    if not _playwright_available:
         raise RuntimeError(
-            'WeasyPrint is not installed. Run:\n'
-            '  pip install weasyprint --break-system-packages\n'
-            'On macOS you may also need: brew install pango'
+            'Playwright is not installed. Run:\n'
+            '  pip install playwright --break-system-packages\n'
+            '  playwright install chromium\n'
+            'The second command downloads the Chromium browser (~150 MB, one-time).'
         )
 
     products = room.get('products', [])
@@ -352,5 +356,15 @@ def render_room_to_pdf(room: dict, output_path: str,
     html = render_moodboard_html(room, tmpl_name, palette=palette)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    _wp.HTML(string=html).write_pdf(output_path)
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.set_content(html, wait_until='networkidle')
+        page.pdf(
+            path=output_path,
+            width='17in',
+            height='11in',
+            print_background=True,
+        )
+        browser.close()
     return output_path
