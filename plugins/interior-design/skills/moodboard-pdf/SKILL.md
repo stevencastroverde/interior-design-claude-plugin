@@ -1,6 +1,6 @@
 ---
 name: moodboard-pdf
-version: "0.4.0"
+version: "0.5.0"
 description: >
   Creates a professional interior design mood board PDF from a folder of product
   markdown clippings. Use this skill whenever a user wants a mood board, moodboard,
@@ -215,6 +215,8 @@ Subtitle muted:  #9A9080   subdued mfr/collection text
 ---
 
 ## Common Issues
+
+**Grid layout requires Playwright:** Run `pip install playwright --break-system-packages` then `playwright install chromium` (one-time, ~150 MB). If you see "Executable doesn't exist", run the second command.
 
 **Images blocked (403):** The script automatically retries with `User-Agent: curl/7.68.0` and then no agent.
 
